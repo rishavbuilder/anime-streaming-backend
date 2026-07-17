@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anime Streamer</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-bottom: 2px solid #ffc119;
+        }
+        .header h1 { font-size: 1.8rem; color: #ffc119; }
+        .container { width: 100%; max-width: 900px; padding: 30px 20px; }
+        .search-box { display: flex; gap: 10px; margin-bottom: 30px; }
+        .search-box input {
+            flex: 1; padding: 12px 16px; border: 2px solid #333;
+            border-radius: 8px; background: #1a1a2e; color: #fff;
+            font-size: 1rem; outline: none; transition: border-color 0.3s;
+        }
+        .search-box input:focus { border-color: #ffc119; }
+        .search-box input::placeholder { color: #666; }
+        .search-box input[type="number"] { max-width: 100px; flex: 0.2; }
+        .btn {
+            padding: 12px 28px; background: #ffc119; color: #111;
+            border: none; border-radius: 8px; font-size: 1rem;
+            font-weight: 600; cursor: pointer; transition: all 0.3s;
+        }
+        .btn:hover { background: #e6ac00; transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .player-container {
+            width: 100%; aspect-ratio: 16/9; background: #000;
+            border-radius: 12px; overflow: hidden; margin-bottom: 20px;
+            display: none; border: 2px solid #222;
+        }
+        .player-container.active { display: block; }
+        .player-container video { width: 100%; height: 100%; }
+        .player-container iframe { width: 100%; height: 100%; border: none; }
+        .server-bar {
+            display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;
+        }
+        .server-btn {
+            padding: 8px 16px; background: #1a1a2e; color: #aaa;
+            border: 1px solid #333; border-radius: 6px; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.2s;
+        }
+        .server-btn:hover { border-color: #ffc119; color: #fff; }
+        .server-btn.active { background: #ffc119; color: #111; border-color: #ffc119; }
+        .info-box {
+            background: #1a1a2e; border-radius: 12px; padding: 20px;
+            display: none; border: 1px solid #333;
+        }
+        .info-box.active { display: block; }
+        .info-box h3 { color: #ffc119; margin-bottom: 10px; }
+        .info-box pre {
+            background: #111; padding: 12px; border-radius: 8px;
+            overflow-x: auto; font-size: 0.85rem; color: #aaa; word-break: break-all;
+        }
+        .error {
+            background: #3d1111; border: 1px solid #ff4444; color: #ff6666;
+            padding: 14px; border-radius: 8px; display: none; margin-bottom: 20px;
+        }
+        .error.active { display: block; }
+        .loading { text-align: center; padding: 40px; display: none; }
+        .loading.active { display: block; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #333;
+            border-top-color: #ffc119; border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="header"><h1>Anime Streamer</h1></div>
+    <div class="container">
+        <div class="search-box">
+            <input type="text" id="title" placeholder="Anime title (e.g. One Piece)" value="One Piece">
+            <input type="number" id="episode" placeholder="Ep" value="1" min="1">
+            <select id="source" class="btn" style="background:#1a1a2e;color:#ffc119;border:2px solid #333;">
+                <option value="auto">Auto</option>
+                <option value="4animo">4Animo (HD Embed)</option>
+                <option value="anitaku">Anitaku (M3U8)</option>
+                <option value="gogoanime">Gogoanime (Sub/Dub)</option>
+            </select>
+            <button class="btn" id="searchBtn" onclick="fetchStream()">Stream</button>
+        </div>
+        <div class="error" id="error"></div>
+        <div class="loading" id="loading"><div class="spinner"></div><p>Loading stream...</p></div>
+        <div class="server-bar" id="serverBar"></div>
+        <div class="player-container" id="player"></div>
+        <div class="info-box" id="infoBox">
+            <h3>Stream Info</h3>
+            <pre id="streamInfo"></pre>
+        </div>
+    </div>
+    <script>
+        let hlsInstance = null;
+        let streamData = null;
+
+        async function fetchStream() {
+            const title = document.getElementById('title').value.trim();
+            const episode = parseInt(document.getElementById('episode').value) || 1;
+            if (!title) return;
+
+            document.getElementById('error').classList.remove('active');
+            document.getElementById('player').classList.remove('active');
+            document.getElementById('infoBox').classList.remove('active');
+            document.getElementById('serverBar').innerHTML = '';
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('searchBtn').disabled = true;
+
+            try {
+                const source = document.getElementById('source').value;
+                const res = await fetch('/stream', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, episode, source })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || 'Failed to fetch');
+
+                streamData = data;
+
+                if (data.master_url) {
+                    loadHlsPlayer(data.master_url);
+                } else if (data.embed_url) {
+                    loadIframePlayer(data.embed_url);
+                }
+
+                if (data.servers && data.servers.length > 1) {
+                    renderServers(data.servers);
+                }
+
+                document.getElementById('streamInfo').textContent =
+                    `${data.anime} - Episode ${data.episode} [${data.source}]\n` +
+                    (data.master_url ? `HLS: ${data.master_url}` : `Embed: ${data.embed_url}`) +
+                    (data.qualities?.length ? `\nQualities: ${data.qualities.map(q => q.resolution).join(', ')}` : '') +
+                    (data.all_sources?.length ? `\nSources: ${data.all_sources.map(s => s.source + (s.has_m3u8 ? ' (m3u8)' : ' (iframe)')).join(', ')}` : '');
+                document.getElementById('infoBox').classList.add('active');
+            } catch (err) {
+                document.getElementById('error').textContent = err.message;
+                document.getElementById('error').classList.add('active');
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('searchBtn').disabled = false;
+            }
+        }
+
+        function loadHlsPlayer(url) {
+            const playerDiv = document.getElementById('player');
+            playerDiv.innerHTML = '';
+            playerDiv.classList.add('active');
+
+            const video = document.createElement('video');
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            playerDiv.appendChild(video);
+
+            if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+            if (Hls.isSupported()) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(url);
+                hlsInstance.attachMedia(video);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
+                    const levels = data.levels.map(l => `${l.height}p`).join(', ');
+                    console.log('Available qualities:', levels);
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+            }
+        }
+
+        function loadIframePlayer(url) {
+            const playerDiv = document.getElementById('player');
+            playerDiv.innerHTML = '';
+            playerDiv.classList.add('active');
+            const iframe = document.createElement('iframe');
+            iframe.src = '/proxy?url=' + encodeURIComponent(url);
+            iframe.allow = 'autoplay; fullscreen; picture-in-picture';
+            playerDiv.appendChild(iframe);
+        }
+
+        function renderServers(servers) {
+            const bar = document.getElementById('serverBar');
+            bar.innerHTML = '';
+            servers.forEach((s, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'server-btn' + (i === 0 ? ' active' : '');
+                btn.textContent = s.name;
+                btn.onclick = () => {
+                    bar.querySelectorAll('.server-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    loadIframePlayer(s.url);
+                };
+                bar.appendChild(btn);
+            });
+        }
+
+        document.getElementById('title').addEventListener('keypress', e => { if (e.key === 'Enter') fetchStream(); });
+        document.getElementById('episode').addEventListener('keypress', e => { if (e.key === 'Enter') fetchStream(); });
+    </script>
+</body>
+</html>
