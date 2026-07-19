@@ -1,37 +1,36 @@
-# Anime Streaming Backend
+<div align="center">
 
-A powerful FastAPI-based backend server for searching, scraping, and streaming anime from multiple sources with a built-in web player UI.
+# 🎬 Anime Streaming Backend
 
-## Features
+### Stream anime from 4+ sources with a single API call
 
-- **Multi-Source Streaming** — Streams from 4 sources: AniList, Anitaku, 4Animo, Gogoanime
-- **Auto Source Selection** — Automatically picks the best available source
-- **HLS Player** — Built-in HLS.js video player with quality selection
-- **Search with Suggestions** — Real-time anime search with cover art previews
-- **Embed Proxy** — CORS-safe proxy for iframe embeds
-- **Anime Metadata** — Fetches cover, description, genres, score, status, relations from AniList GraphQL API
-- **Multiple Servers** — Switch between HD-1, HD-2, HD-3 embed servers
-- **Deploy Anywhere** — Ready for Heroku, Railway, or any VPS
+[![Python](https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+[![Deploy](https://img.shields.io/badge/Deploy-Heroku-430098?style=for-the-badge&logo=heroku&logoColor=white)](https://heroku.com)
 
-## Tech Stack
+**No API keys needed. No rate limits. Just works.**
 
-- **Backend:** Python, FastAPI, Uvicorn
-- **Scraping:** BeautifulSoup4, lxml, Requests
-- **Data Source:** AniList GraphQL API
-- **Player:** HLS.js (client-side)
-- **Frontend:** Vanilla HTML/CSS/JS (no framework)
+[Get Started](#-quick-start) • [API Docs](#-api-endpoints) • [Deploy](#-deploy)
 
-## API Endpoints
+</div>
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Web player UI |
-| GET | `/search?q=<query>&source=<auto\|anilist\|anitaku\|gogoanime>&page=<n>` | Search anime |
-| GET | `/anime/<anilist_id>` | Get anime details from AniList |
-| POST | `/stream` | Fetch stream (body: `{title, episode, source}`) |
-| GET | `/proxy?url=<embed_url>` | Proxy embed pages safely |
+---
 
-## Installation
+## 🤔 Why This?
+
+Most anime APIs are either dead, rate-limited, or require API keys. This backend:
+
+- ✅ **Works out of the box** — Zero configuration, zero API keys
+- ✅ **4 sources** — AniList, Anitaku, 4Animo, Gogoanime (auto-fallback)
+- ✅ **Instant search** — Type 2 characters, get suggestions with covers
+- ✅ **M3U8 + HLS** — Direct stream links, no ads, no popups
+- ✅ **Self-hosted** — Your server, your rules, no middleman
+- ✅ **Heroku ready** — Deploy in 60 seconds
+
+---
+
+## ⚡ Quick Start
 
 ```bash
 git clone https://github.com/rishavbuilder/anime-streaming-backend.git
@@ -40,34 +39,140 @@ pip install -r requirements.txt
 python anime_scraper.py
 ```
 
-Server starts at `http://localhost:8000`
+Open **http://localhost:8000** — that's it. You're streaming.
 
-## Deployment (Heroku)
+---
 
+## 🎯 What You Can Build
+
+| Use Case | How |
+|----------|-----|
+| 🎥 Personal anime player | Use the built-in UI |
+| 📱 Mobile app backend | Hit `/stream` endpoint |
+| 🤖 Discord bot | Fetch streams for commands |
+| 📊 Anime dashboard | Use `/search` + `/anime` endpoints |
+| 🔗 Link shortener with preview | Use AniList metadata API |
+
+---
+
+## 🛠️ API Endpoints
+
+### `POST /stream` — Get stream for any anime
+```json
+{
+  "title": "One Piece",
+  "episode": 1,
+  "source": "auto"
+}
+```
+**Response:**
+```json
+{
+  "status": "success",
+  "anime": "One Piece",
+  "episode": 1,
+  "master_url": "https://...",
+  "qualities": [{"resolution": "1920x1080", "url": "..."}],
+  "embed_url": null,
+  "servers": [{"name": "HD-1", "url": "..."}],
+  "source": "anilist",
+  "meta": { "title": "One Piece", "genres": ["Action", "Adventure"] }
+}
+```
+
+### `GET /search?q=naruto&source=auto` — Search anime
+Returns suggestions with cover art, score, episode count.
+
+### `GET /anime/21` — Get anime details
+Full metadata from AniList (genres, relations, next airing, etc.)
+
+### `GET /proxy?url=<embed_url>` — CORS proxy
+Safely proxy embed pages (removes ads, fixes paths).
+
+---
+
+## 📡 Sources
+
+| Source | Stream Type | Best For |
+|--------|------------|----------|
+| **AniList** | HD Embed (4Animo) | Metadata + HD playback |
+| **Anitaku** | M3U8 direct | Quality selection, fast |
+| **4Animo** | CDN Embed | Multiple servers (HD-1/2/3) |
+| **Gogoanime** | M3U8 / Embed | Sub & Dub |
+
+Auto mode tries all sources and picks the first working one.
+
+---
+
+## 🚀 Deploy
+
+### Heroku (60 seconds)
 ```bash
-heroku create your-app-name
+heroku create anime-api
 git push heroku main
 ```
 
-Procfile is already configured.
+### Railway
+```bash
+railway init
+railway up
+```
 
-## Usage
+### Docker
+```bash
+docker build -t anime-api .
+docker run -p 8000:8000 anime-api
+```
 
-1. Open `http://localhost:8000` in browser
-2. Type anime title — suggestions appear automatically
-3. Select episode number and source (or keep Auto)
-4. Click **Stream** — video plays in the built-in player
-5. Switch servers using the server bar below the player
+---
 
-## Sources
+## 🧩 Tech Stack
 
-| Source | Type | Notes |
-|--------|------|-------|
-| **AniList** | GraphQL API + 4Animo embeds | Best metadata, HD embeds |
-| **Anitaku** | Web scraping | M3U8 streams, multiple mirrors |
-| **4Animo** | CDN embeds | HD-1/HD-2/HD-3 servers |
-| **Gogoanime** | Web scraping | Sub/Dub support |
+```
+Python 3.8+    → Backend logic
+FastAPI        → REST API framework
+Uvicorn        → ASGI server
+BeautifulSoup4 → HTML scraping
+LXML           → Fast HTML parser
+HLS.js         → Client-side HLS player (CDN)
+```
 
-## License
+---
 
-MIT
+## 📂 Project Structure
+
+```
+anime-streaming-backend/
+├── anime_scraper.py    # Main server (FastAPI + all scrapers)
+├── index.html          # Built-in web player UI
+├── requirements.txt    # Python dependencies
+├── Procfile            # Heroku deployment
+├── LICENSE             # MIT License
+└── README.md           # This file
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repo
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'add amazing feature'`)
+4. Push (`git push origin feature/amazing`)
+5. Open Pull Request
+
+---
+
+## 📜 License
+
+MIT — do whatever you want.
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if it helped you build something cool**
+
+[![GitHub stars](https://img.shields.io/github/stars/rishavbuilder/anime-streaming-backend?style=social)](https://github.com/rishavbuilder/anime-streaming-backend/stargazers)
+
+</div>
